@@ -61,15 +61,20 @@ Events are spread across time periods for dashboard styling:
 
 ## Configuration
 
-Edit the `CONFIG` object in `seed/config.ts`:
+Set these environment variables to override defaults, or edit `seed/config.ts` directly:
+
+| Env Variable | Default | Description |
+|-----|---------|-------------|
+| `SEED_TEACHER_EMAIL` | `teacher@example.com` | Teacher email to look up in the database |
+
+Additional settings in `seed/config.ts`:
 
 | Key | Default | Description |
 |-----|---------|-------------|
-| `TEACHER_EMAIL` | `alex.smith@teachinglab.org` | Teacher account to use |
-| `GROUP_IDS` | `[1]` | Groups to populate |
-| `MODULE_ID` | `10` | Module to seed lessons into |
-| `STUDENTS_TO_CREATE` | `12` | Students per group |
-| `DAYS_TO_SEED` | Varies | Days of historical data |
+| `GROUP_IDS` | `[1, 3]` | Groups to populate |
+| `MODULE_IDS` | `[10, 11]` | Modules to seed lessons into |
+| `STUDENTS_TO_CREATE` | `13` | Students per group |
+| `DAYS_TO_SEED` | `45` | Days of historical data |
 
 ## After Running
 

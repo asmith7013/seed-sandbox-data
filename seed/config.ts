@@ -16,7 +16,7 @@ export { db };
 
 export const CONFIG = {
   // Teacher to use (must exist in database)
-  TEACHER_EMAIL: "alex.smith@teachinglab.org",
+  TEACHER_EMAIL: process.env.SEED_TEACHER_EMAIL || "teacher@example.com",
 
   // Groups to populate with data
   GROUP_IDS: [1, 3],
