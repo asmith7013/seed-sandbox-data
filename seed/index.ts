@@ -7,6 +7,8 @@
 // Configuration and types
 export {
   CONFIG,
+  ALWAYS_COMPLETE_INDICES,
+  ZERO_START_INDICES,
   type Teacher,
   type Group,
   type Enrollment,
@@ -21,7 +23,7 @@ export { verifyTeacher, verifyGroups, verifyOrCreateModules } from "./verify";
 
 // Cleanup
 export { cleanupSandboxData } from "./cleanup";
-export { cleanupPacingData } from "./cleanupPacing";
+export { cleanupPacingData, createPacingConfigs } from "./pacing";
 
 // Students
 export { seedStudentsForGroup } from "./students";
@@ -45,3 +47,9 @@ export {
   seedAssessmentResponses,
   updateExistingResponses,
 } from "./assessments";
+
+// Canvas AI Feedback
+export {
+  createCanvasAssignments,
+  seedCanvasResponses,
+} from "./canvasFeedback";

@@ -9,6 +9,8 @@ import { randomUUID } from "crypto";
 import {
   db,
   CONFIG,
+  ALWAYS_COMPLETE_INDICES,
+  ZERO_START_INDICES,
   Teacher,
   Assessment,
   AssessmentQuestion,
@@ -166,7 +168,16 @@ export async function seedAssessmentResponses(
       first_name: string;
       last_name: string;
     };
-    const responseRate = (i % 4) / 3; // 0%, 33%, 66%, 100%
+
+    // Zero-start students never respond
+    if (ZERO_START_INDICES.includes(i)) {
+      console.log(`   - ${enrollment.first_name} ${enrollment.last_name}: Zero-start student`);
+      continue;
+    }
+
+    // Always-complete students get 100% response rate
+    const isAlwaysComplete = ALWAYS_COMPLETE_INDICES.includes(i);
+    const responseRate = isAlwaysComplete ? 1.0 : (i % 4) / 3; // 0%, 33%, 66%, 100%
 
     if (responseRate === 0) {
       console.log(`   - ${enrollment.first_name} ${enrollment.last_name}: No responses`);
@@ -181,7 +192,8 @@ export async function seedAssessmentResponses(
 
       for (let qIdx = 0; qIdx < assessment.questions.length; qIdx++) {
         const question = assessment.questions[qIdx];
-        if (Math.random() > responseRate) continue;
+        // Always-complete students answer all questions; others randomly skip based on rate
+        if (!isAlwaysComplete && Math.random() > responseRate) continue;
 
         const isCorrect = Math.random() > 0.4;
         const explanationGrading = explanationGradings[Math.floor(Math.random() * 3)];

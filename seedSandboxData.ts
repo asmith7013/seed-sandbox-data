@@ -28,6 +28,7 @@ import {
   verifyOrCreateModules,
   cleanupSandboxData,
   cleanupPacingData,
+  createPacingConfigs,
   seedStudentsForGroup,
   createAllLessonsForModule,
   seedProgressEventsForGroup,
@@ -39,6 +40,8 @@ import {
   assignAssessmentsToGroup,
   seedAssessmentResponses,
   updateExistingResponses,
+  createCanvasAssignments,
+  seedCanvasResponses,
 } from "./seed";
 
 console.log("Using project database connection\n");
@@ -117,6 +120,32 @@ async function seedSandboxData() {
     await seedAttendanceEvents(group.id, enrollments);
   }
 
+  // 4b. Create pacing configs in AI Coaching Platform for each module
+  // Use first group's lesson data as reference (all groups have same structure)
+  const firstGroupLessons = allLessonsByModule.get(CONFIG.GROUP_IDS[0]);
+  if (firstGroupLessons) {
+    for (let moduleIndex = 0; moduleIndex < moduleIds.length; moduleIndex++) {
+      const moduleId = moduleIds[moduleIndex];
+      const moduleLessonData = firstGroupLessons[moduleIndex];
+
+      // Combine standalone and paired lessons for pacing
+      const lessonsForPacing = [
+        ...moduleLessonData.standaloneLessons.map((l) => ({
+          lessonId: l.lessonId,
+          lessonTitle: l.lessonTitle,
+        })),
+        ...moduleLessonData.pairedLessons.map((l) => ({
+          lessonId: l.lessonId,
+          lessonTitle: l.lessonTitle,
+          masteryCheckId: l.masteryCheckId,
+          masteryCheckTitle: l.masteryCheckTitle,
+        })),
+      ];
+
+      await createPacingConfigs(CONFIG.GROUP_IDS, moduleId, lessonsForPacing);
+    }
+  }
+
   // 5. Create assessments - ONE PER MODULE, in order
   // Assessments are completed sequentially: all module 1 assessments, then module 2, etc.
   const firstGroupId = CONFIG.GROUP_IDS[0];
@@ -152,10 +181,28 @@ async function seedSandboxData() {
     }
   }
 
-  // 8. Update existing responses
+  // 8. Create Canvas assignments with AI feedback for each group/module
+  for (let groupIndex = 0; groupIndex < groups.length; groupIndex++) {
+    const group = groups[groupIndex];
+    console.log(`\n${"=".repeat(60)}`);
+    console.log(`Creating Canvas AI feedback for group: ${group.group_name}`);
+    console.log("=".repeat(60));
+
+    for (let moduleIndex = 0; moduleIndex < moduleIds.length; moduleIndex++) {
+      const moduleId = moduleIds[moduleIndex];
+      const canvasAssignments = await createCanvasAssignments(
+        group.id,
+        moduleId,
+        teacher,
+      );
+      await seedCanvasResponses(group.id, canvasAssignments, moduleIndex);
+    }
+  }
+
+  // 9. Update existing responses
   await updateExistingResponses();
 
-  // 9. Print summary
+  // 10. Print summary
   console.log("\n" + "=".repeat(60));
   console.log("Sandbox data seed complete!");
   console.log("=".repeat(60));
@@ -164,6 +211,7 @@ async function seedSandboxData() {
     `View velocity at: /teacher/sandbox/velocity?groupIds=${CONFIG.GROUP_IDS.join(",")}`,
   );
   console.log(`View assessments at: /teacher/sandbox/assessmentData`);
+  console.log(`View AI feedback at: /teacher/sandbox/aiFeedback`);
   console.log(`\nGroups: ${groups.map((g) => g.group_name).join(", ")}`);
   console.log(`Module IDs: ${moduleIds.join(", ")}`);
   console.log(`Students per group: ${CONFIG.STUDENTS_TO_CREATE}`);

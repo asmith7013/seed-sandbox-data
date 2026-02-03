@@ -43,6 +43,16 @@ export const CONFIG = {
 };
 
 // =============================================================================
+// SPECIAL STUDENT ROLES
+// =============================================================================
+
+// Students at these indices will complete 100% of all assignments
+export const ALWAYS_COMPLETE_INDICES = [0]; // First student per group (Alex Smith)
+
+// Students at these indices will have 0% completion (not started anything)
+export const ZERO_START_INDICES = [12]; // Last student per group
+
+// =============================================================================
 // TYPES
 // =============================================================================
 

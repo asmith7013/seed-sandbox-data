@@ -15,6 +15,8 @@ import { randomUUID } from "crypto";
 import {
   db,
   CONFIG,
+  ALWAYS_COMPLETE_INDICES,
+  ZERO_START_INDICES,
   Enrollment,
   LessonData,
   StandaloneLessonData,
@@ -113,16 +115,27 @@ export async function seedProgressEventsForGroup(
   for (let i = 0; i < enrollments.length; i++) {
     const enrollment = enrollments[i];
 
+    // Skip zero-start students entirely - no events
+    if (ZERO_START_INDICES.includes(i)) {
+      console.log(`   - ${enrollment.name}: Zero-start student (no events)`);
+      continue;
+    }
+
     // Determine learner type (how many total lessons they'll complete)
-    const learnerType = i % 5;
     let completionRate: number;
-    switch (learnerType) {
-      case 0: completionRate = 1.0; break;    // Complete all
-      case 1: completionRate = 0.8; break;    // 80%
-      case 2: completionRate = 0.6; break;    // 60%
-      case 3: completionRate = 0.4; break;    // 40%
-      case 4: completionRate = 0.2; break;    // 20%
-      default: completionRate = 0.5;
+    if (ALWAYS_COMPLETE_INDICES.includes(i)) {
+      // Always-complete students get 100% completion
+      completionRate = 1.0;
+    } else {
+      const learnerType = i % 5;
+      switch (learnerType) {
+        case 0: completionRate = 1.0; break;    // Complete all
+        case 1: completionRate = 0.8; break;    // 80%
+        case 2: completionRate = 0.6; break;    // 60%
+        case 3: completionRate = 0.4; break;    // 40%
+        case 4: completionRate = 0.2; break;    // 20%
+        default: completionRate = 0.5;
+      }
     }
 
     // Process each module sequentially
@@ -202,8 +215,8 @@ export async function seedProgressEventsForGroup(
           await createLessonCompletedEvent(enrollment, lesson, groupId, completedTimestamp);
           day1Stats.completions++;
 
-          // ~40% delay mastery check to next working day
-          const delayMasteryCheck = (i + lessonIdx + moduleIndex) % 5 < 2;
+          // ~40% delay mastery check to next working day (never for always-complete students)
+          const delayMasteryCheck = !ALWAYS_COMPLETE_INDICES.includes(i) && (i + lessonIdx + moduleIndex) % 5 < 2;
 
           if (delayMasteryCheck && day1Offset > 1) {
             const nextWorkingDay = getNextWorkingDay(day1Offset, moduleDays);
@@ -258,7 +271,9 @@ export async function seedProgressEventsForGroup(
     await createLessonCompletedEvent(enrollment, lesson, groupId, completedTimestamp);
     day2Stats.completions++;
 
-    // ~40% delay mastery check to next working day
+    // ~40% delay mastery check to next working day (never for always-complete students)
+    // Note: partial lessons are tracked by lessonIndex, so we can't easily check student index here
+    // But always-complete students won't have partial lessons due to the split logic
     const delayMasteryCheck = (partial.lessonIndex + moduleIndex) % 5 < 2;
 
     if (delayMasteryCheck && scheduledDayOffset > 1) {
@@ -639,6 +654,9 @@ export async function seedStandaloneLessonEvents(
       const baseDayOffset = daysToSeed - (moduleIndex * Math.floor(daysToSeed / 2)) - lessonIdx;
 
       for (let i = 0; i < enrollments.length; i++) {
+        // Skip zero-start students - they haven't started anything
+        if (ZERO_START_INDICES.includes(i)) continue;
+
         const enrollment = enrollments[i];
         // Stagger students slightly: fast learners complete earlier
         const studentDayOffset = Math.max(1, baseDayOffset - Math.floor(i / 4));
@@ -657,7 +675,8 @@ export async function seedStandaloneLessonEvents(
         await createStandaloneLessonCompletedEvent(enrollment, lesson, groupId, completedTs);
       }
 
-      console.log(`   + ${lesson.lessonTitle}: all ${enrollments.length} students completed`);
+      const completedCount = enrollments.length - ZERO_START_INDICES.filter(idx => idx < enrollments.length).length;
+      console.log(`   + ${lesson.lessonTitle}: ${completedCount}/${enrollments.length} students completed`);
     }
   }
 }
