@@ -20,6 +20,7 @@ export async function cleanupSandboxData(
   await cleanupEvents(groupIds);
   await cleanupSeedStudents(groupIds);
   await cleanupSeedAssignments();
+  await cleanupCanvasAssignments();
   await cleanupOrphanedKCs();
   await cleanupAssessments();
 
@@ -187,4 +188,29 @@ async function cleanupAssessments(): Promise<void> {
   }
 
   console.log(`   Deleted ${assessmentIds.length} old assessment assignments`);
+}
+
+/**
+ * Delete old Canvas practice assignments.
+ */
+async function cleanupCanvasAssignments(): Promise<void> {
+  const oldCanvas = await db.execute(
+    sql`SELECT id FROM assignments WHERE title LIKE 'Canvas Practice %'`
+  );
+
+  if (oldCanvas.length === 0) return;
+
+  const canvasIds = oldCanvas.map((a: any) => a.id);
+
+  for (const id of canvasIds) {
+    await db.execute(sql`DELETE FROM assignment_question_responses WHERE assigned_assignment_id IN (
+      SELECT id FROM assigned_assignments WHERE assignment_id = ${id}
+    )`);
+    await db.execute(sql`DELETE FROM assigned_assignments WHERE assignment_id = ${id}`);
+    await db.execute(sql`DELETE FROM assignment_modules WHERE assignment_id = ${id}`);
+    await db.execute(sql`DELETE FROM assignment_questions WHERE assignment_id = ${id}`);
+    await db.execute(sql`DELETE FROM assignments WHERE id = ${id}`);
+  }
+
+  console.log(`   Deleted ${canvasIds.length} old Canvas practice assignments`);
 }
